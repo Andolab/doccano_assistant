@@ -3,26 +3,29 @@
 
 ## Usage
 
-- mecabで形態素解析された文からdoccanoでアノテーションを行う前の前処理をする場合
+### mecabで形態素解析された文からdoccanoでアノテーションを行う前の前処理をする場合
 
 ```shell
 python mecab2doccano.py テキストファイルが置かれたディレクトリ 前処理後のテキストを保存するファイル名
 ```
 
-- doccanoを起動させる場合
+### doccanoの使い方
 
+1. dockerコンテナを立ち上げる
 ```shell
-git clone https://github.com/chakki-works/doccano
-cp Dockerfile doccano/
-cd doccano/
 docker build . -t doccano_container:0.1
-docker run -it -p 8000:8000 doccano_container:0.1
-# その後，ブラウザでlocalhost:8000に接続
+docker run -d -p 8000:8000 doccano_container:0.1
+# コンテナidが出力される
 ```
 
-- doccanoのユーザを追加する場合
+2. doccanoのユーザを追加（必要な場合のみ）
 ```shell
-docker run -it doccano_container:0.1 sh
+docker exec -it コンテナid sh
 # コンテナへアクセス後
-echo "from django.contrib.auth.models import User; User.objects.create_user('ユーザ名', 'メールアドレス', 'パスワード')" | python manage.py shell
+# 以下はコマンド例．ユーザ名やパスワードは変更可能
+echo "from django.contrib.auth.models import User; User.objects.create_user('username', 'mailaddress', 'password')" | python manage.py shell
 ```
+
+3. localhost:8000/にアクセス
+
+4. タグ付け頑張る!!
