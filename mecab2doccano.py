@@ -1,5 +1,6 @@
 import sys
 import glob
+import re
 
 """
 Usage
@@ -20,13 +21,16 @@ def mecab2doccano(path: str, partition: str) -> str:
     words = ''
     for text in texts:
         morphs = text.split('\n')
-        words += "".join([morph.split(partition)[0] for morph in morphs]) + ' '
+        morphs = [morph for morph in morphs if len(morph.split(partition)) > 1]
+        words += ''.join([morph.split(partition)[0] for morph in morphs]) + ' ' \
+            if len(morphs) > 0 else ''
+    words = re.sub('\s+$', '', words)
     return words
 
 
 if __name__ == '__main__':
-   mecab_format_dir = sys.argv[1]
-   parsed_text_path = sys.argv[2]
-   converted_text = '\n'.join(mecab2doccano(path, ',') for path in glob.glob(mecab_format_dir + '/*'))
-   with open(parsed_text_path, 'w') as f:
-       f.write(converted_text)
+    mecab_format_dir = sys.argv[1]
+    parsed_text_path = sys.argv[2]
+    converted_text = '\n'.join(mecab2doccano(path, '\t') for path in glob.glob(mecab_format_dir + '/*'))
+    with open(parsed_text_path, 'w') as f:
+        f.write(converted_text)
