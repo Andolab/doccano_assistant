@@ -3,22 +3,22 @@
 
 ## Usage
 
-### mecabで形態素解析された文からdoccanoでアノテーションを行う前の前処理をする場合
+1. mecabで形態素解析された文からdoccanoでアノテーションを行う前の前処理を行う(必要な場合のみ)
 
 ```shell
 python mecab2doccano.py テキストファイルが置かれたディレクトリ 前処理後のテキストを保存するファイル名
 ```
 
-### doccanoの使い方
+2. dockerコンテナを立ち上げる
 
-1. dockerコンテナを立ち上げる
 ```shell
 docker build . -t doccano_container:0.1
 docker run -d -p 8000:8000 doccano_container:0.1
 # コンテナidが出力される
 ```
 
-2. doccanoのユーザを追加（必要な場合のみ）
+3. doccanoのユーザを追加（必要な場合のみ）
+
 ```shell
 docker exec -it コンテナid sh
 # コンテナへアクセス後
@@ -26,6 +26,12 @@ docker exec -it コンテナid sh
 echo "from django.contrib.auth.models import User; User.objects.create_user('username', 'mailaddress', 'password')" | python manage.py shell
 ```
 
-3. localhost:8000/にアクセス
+4. localhost:8000/にアクセス
 
-4. タグ付け頑張る!!
+5. タグ付け頑張る!!
+
+6. doccanoでタグづけしたテキストをダウンロードし，以下のスクリプトを走らせる
+
+```shell
+python doccano2mecab.py タグづけしたテキスト(.csv) テキストファイルが置かれたディレクトリ タグづけされたファイルを置きたいディレクトリ
+```

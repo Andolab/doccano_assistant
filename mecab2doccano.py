@@ -2,11 +2,6 @@ import sys
 import glob
 import re
 
-"""
-Usage
-python mecab2doccano.py targetdirectory outputtext
-"""
-
 
 def mecab2doccano(path: str, partition: str) -> str:
     """
@@ -31,6 +26,6 @@ def mecab2doccano(path: str, partition: str) -> str:
 if __name__ == '__main__':
     mecab_format_dir = sys.argv[1]
     parsed_text_path = sys.argv[2]
-    converted_text = '\n'.join(mecab2doccano(path, '\t') for path in glob.glob(mecab_format_dir + '/*'))
+    converted_text = '\n'.join(mecab2doccano(path, '\t') for path in glob.glob(mecab_format_dir + '*'))
     with open(parsed_text_path, 'w') as f:
         f.write(converted_text)

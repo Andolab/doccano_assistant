@@ -1,0 +1,2 @@
+mecab-python3==0.996.1
+tqdm==4.28.1
