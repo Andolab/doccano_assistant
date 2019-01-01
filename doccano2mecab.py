@@ -9,6 +9,29 @@ import tqdm
 m = MeCab.Tagger('-Owakati')
 
 
+def labels_check(labels: List[str]) -> List[str]:
+    """
+    check labels obey the IOB2 labeling format
+    :param: ['B-PRO', I-PRO] or ['I-PSN', 'I-PSN'], etc...
+    :return: ['B-PRO', 'I-PRO] or ['B-PSN', 'I-PSN'], etc...
+    """
+
+    new_labels = []
+    beforeidx = 'O'
+    beforetype = ''
+    for label in labels:
+        if label[0] != 'I':
+            new_labels.append(label)
+        elif beforeidx in ['B', 'I'] and beforetype == label[2:]:
+            new_labels.append(label)
+        else:
+            truelabel = 'B' + label[1:]
+            new_labels.append(truelabel)
+        beforeidx = label[0]
+        beforetype = label[2:] if len(label) > 3 else ''
+    return new_labels
+
+
 def char2mecab(pair: Dict[str, List[str]]) -> Dict[str, List[str]]:
     """
     chars in text to words in text
@@ -27,7 +50,7 @@ def char2mecab(pair: Dict[str, List[str]]) -> Dict[str, List[str]]:
         for _ in range(len(morph) - 1):
             label.pop(0)
 
-    new_pair['label'] = label_to_morphs
+    new_pair['label'] = labels_check(label_to_morphs)
 
     return new_pair
 
@@ -66,7 +89,7 @@ def return_annotated_sentences(sentences: List[str], morphs: List[List[str]], la
         # 以下の処理は通常のラベル付けの場合は関係ない
         # 開発者の用意した実験データにのみ必要な処理
         elif len(morph_words) == 1:
-            annotated_sentences.append(morph_words[0])
+            annotated_sentences.append('\n' + morph_words[0] + '\n')
         elif morph_words not in morphs and \
                 words_ignored_symbol in morphs:
             idx = morphs.index(words_ignored_symbol)
@@ -100,14 +123,19 @@ def doccano2mecab(targetfile_path: str, old_dir_path: str, new_dir_path: str) ->
 
         texts = []
         chars = []
+        start = True
         for row in reader:
-            if row[1] == ' ':
+            if start:
+                beforenum = row[0]
+                start = False
+            if row[1] == ' ' or row[0] != beforenum:
                 text = [char[0] for char in chars]
                 label = [char[1] for char in chars]
                 texts.append({'text': text, 'label': label})
                 chars = []
             else:
                 chars.append(row[1:])
+            beforenum = row[0]
 
     # converte doccano format to morph format
     label_to_morphs = [char2mecab(text) for text in texts]
