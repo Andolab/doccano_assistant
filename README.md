@@ -30,8 +30,18 @@ echo "from django.contrib.auth.models import User; User.objects.create_user('use
 
 5. タグ付け頑張る!!
 
-6. doccanoでタグづけしたテキストをダウンロードし，以下のスクリプトを走らせる
+6. doccanoからタグづけしたファイルを .csv 形式でダウンロードしてくる
+
+7. doccanoでタグづけしたテキストをダウンロードし，以下のスクリプトを走らせる
 
 ```shell
+# 別々のファイルにタグ付けしたい場合に使う
 python doccano2mecab.py タグづけしたテキスト(.csv) テキストファイルが置かれたディレクトリ タグづけされたファイルを置きたいディレクトリ
+```
+
+または
+
+```shell
+# 1つのファイルにタグ付けした結果を置きたい場合に使う
+python doccano2parse.py タグづけしたテキスト(.csv) テキストファイル名
 ```
