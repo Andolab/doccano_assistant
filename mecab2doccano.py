@@ -3,7 +3,7 @@ import glob
 import re
 
 
-def mecab2doccano(path: str, partition: str) -> str:
+def mecab2doccano(path, partition):
     """
     texts of mecab format to texts of doccano format
     :param path : path of a file containing morphologically parsed text in mecab
@@ -17,7 +17,7 @@ def mecab2doccano(path: str, partition: str) -> str:
     for text in texts:
         morphs = text.split('\n')
         morphs = [morph for morph in morphs if len(morph.split(partition)) > 1]
-        words += ''.join([morph.split(partition)[0] for morph in morphs]) + ' ' \
+        words += ' '.join([morph.split(partition)[0] for morph in morphs]) + ' ' \
             if len(morphs) > 0 else ''
     words = re.sub('\s+$', '', words)
     return words

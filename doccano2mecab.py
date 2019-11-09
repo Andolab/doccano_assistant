@@ -1,159 +1,70 @@
-from typing import List, Dict
 import sys
-import glob
-import csv
-import MeCab
-import tqdm
+import json
+import re
+import glob  # フォルダの中のpathを取ってこれるやつ
 
 
-m = MeCab.Tagger('-Owakati')
+def return_annotated_text(file_sentence, json_labels):
+    annotated_text = []
+    for f, j in zip(file_sentence, json_labels):
+        tmp_text = f.split("\t")
+        tmp_text[-1] = j
+        tmp_text = "\t".join(tmp_text)
+        annotated_text.append(tmp_text)
+    return annotated_text
 
-
-def labels_check(labels: List[str]) -> List[str]:
-    """
-    check labels obey the IOB2 labeling format
-    :param: ['B-PRO', I-PRO] or ['I-PSN', 'I-PSN'], etc...
-    :return: ['B-PRO', 'I-PRO] or ['B-PSN', 'I-PSN'], etc...
-    """
-
-    new_labels = []
-    beforeidx = 'O'
-    beforetype = ''
-    for label in labels:
-        if label[0] != 'I':
-            new_labels.append(label)
-        elif beforeidx in ['B', 'I'] and beforetype == label[2:]:
-            new_labels.append(label)
-        else:
-            truelabel = 'B' + label[1:]
-            new_labels.append(truelabel)
-        beforeidx = label[0]
-        beforetype = label[2:] if len(label) > 3 else ''
-    return new_labels
-
-
-def char2mecab(pair: Dict[str, List[str]]) -> Dict[str, List[str]]:
-    """
-    chars in text to words in text
-    :param pair: ex.) {'text': ['白', 'い', '恋', '人'], 'label': ['B-PRO', 'I-PRO', 'I-PRO', 'I-PRO']}
-    :return: ex.) {'text': ['白い', '恋人'], 'label': ['B-PRO', 'I-PRO']}
-    """
-
-    new_pair = {}
-    text = ''.join(pair['text'])
-    label = pair['label']
-    parsed_text = (m.parse(text)).split(' ')[:-1]
-    label_to_morphs = []
-    new_pair['text'] = parsed_text
-    for morph in parsed_text:
-        label_to_morphs.append(label.pop(0))
-        for _ in range(len(morph) - 1):
-            label.pop(0)
-
-    new_pair['label'] = labels_check(label_to_morphs)
-
-    return new_pair
-
-
-def return_annotated_sentences(sentences: List[str], morphs: List[List[str]], labels: List[List[str]]) -> str:
-    """
-    return sentence annotated in IOB2 labeling scheme
-    :param sentences: [sentence_0, sentence_1, ... sentence_n] (unannotated data)
-    :param morphs: [[morph], [morph], ... [morph]] (morphs annotated in doccano)
-    :param labels: [[label], [label], ... [label]] (labels annotated in doccano.
-                                                    This param's indexes corresponds to morph)
-    :return: morphs in sentences annotated in IOB2 labeling scheme (mecab format)
-             referred char in sentences annotated in IOB2 labeling format (doccano format)
-    """
-
-    annotated_sentences = []
-
-    for sentence in sentences:
-        morph_words = [morph.split('\t')[0] for morph in sentence.split('\n')]
-        morph_others = [morph.split('\t')[1:-2] for morph in sentence.split('\n')]
-        # words_ignored_symbolは開発者の用意した実験データにのみ必要
-        words_ignored_symbol = [morph.split('\t')[0] for morph in sentence.split('\n')
-                                if len(morph.split('\t')) > 1]
-
-        # if morphs annotated in doccano have unannotated morph
-        if morph_words in morphs:
-            # annotate to unannotated morph
-            idx = morphs.index(morph_words)
-            annotated_sentences.append('\n'.join(
-                [word + '\t' + '\t'.join(other) + '\t' + label for word, other, label
-                 in zip(morph_words, morph_others, labels[idx])]
-            ))
-            morphs.pop(idx)
-            labels.pop(idx)
-
-        # 以下の処理は通常のラベル付けの場合は関係ない
-        # 開発者の用意した実験データにのみ必要な処理
-        elif len(morph_words) == 1:
-            annotated_sentences.append('\n' + morph_words[0] + '\n')
-        elif morph_words not in morphs and \
-                words_ignored_symbol in morphs:
-            idx = morphs.index(words_ignored_symbol)
-            k = 0
-            sentence = ''
-            for word in morph_words:
-                if '[url]' == word or '[/url]' == word:
-                    sentence += word + '\n'
-                else:
-                    sentence += word + "\t" + '\t'.join(morph_others[k]) + \
-                        '\t' + labels[idx][k] + '\n'
-                    k += 1
-            annotated_sentences.append(sentence)
-            morphs.pop(idx)
-            labels.pop(idx)
-
-    return '\n'.join(annotated_sentences)
-
-
-def doccano2mecab(targetfile_path: str, old_dir_path: str, new_dir_path: str) -> None:
-    """
-    replace doccano labeling format to mecab labeling format
-    :param targetfile_path: path of file containing text labeled in doccano format
-    :param old_dir_path: path of file containing text in mecab format
-    :param new_dir_path: path of new files containing text labeled in mecab format
-    """
-
-    # loading doccano format file
-    with open(targetfile_path, 'r') as f:
-        reader = csv.reader(f)
-
-        texts = []
-        chars = []
-        start = True
-        for row in reader:
-            if start:
-                beforenum = row[0]
-                start = False
-            if row[1] == ' ' or row[0] != beforenum:
-                text = [char[0] for char in chars]
-                label = [char[1] for char in chars]
-                texts.append({'text': text, 'label': label})
-                chars = []
+def return_json_labels(length, j_labels:list):
+    IOB_labels = []
+    index = 0
+    flag = False
+    j_labels.sort(key=lambda x:x[0])
+    # while index < sum(length) + len(length) - 1:
+    for l in length:
+        if len(j_labels) > 0 and j_labels[0][0] <= index and j_labels[0][1] > index:
+            if flag:
+                IOB_labels.append("I-" + j_labels[0][2])
             else:
-                chars.append(row[1:])
-            beforenum = row[0]
+                IOB_labels.append("B-" + j_labels[0][2])
+                flag = True
+        else:
+            IOB_labels.append("O")
+        index += l + 1
+        if len(j_labels) > 0 and j_labels[0][1] <= index:
+            j_labels = j_labels[1:]
+            flag = False
+        print(index)
+    return IOB_labels
 
-    # converte doccano format to morph format
-    label_to_morphs = [char2mecab(text) for text in texts]
-    doccano_morphs = [dic['text'] for dic in label_to_morphs]
-    doccano_labels = [dic['label'] for dic in label_to_morphs]
+def reshape_json(json_file):
+    with open(json_file, 'r', encoding="utf-8") as f:
+        # reader = f.readlines()
+        content = '['
+        content += ''.join(
+            [re.sub(r'}\n', '},\n', line)
+                for line in f.readlines()]
+        )[:-2] + ']'
+    json_contents = json.loads(content)
+    return json_contents
 
-    # annotate unannotated data
-    for fname in tqdm.tqdm(glob.glob(old_dir_path + '/*')):
-        with open(fname, 'r') as f:
-            ftext = f.read().split('\n\n')
-            annotated_text = return_annotated_sentences(ftext, doccano_morphs, doccano_labels)
-        new_fname = fname[fname.rfind('/') + 1:]
-        with open(new_dir_path + new_fname, 'w') as f:
-            f.write(annotated_text)
+if __name__ == "__main__":
+    targetfile_path = sys.argv[1]  # doccano
+    old_dir_path = sys.argv[2]  # folder
+    new_dir_path = sys.argv[3]  # new folder
 
-
-if __name__ == '__main__':
-    targetfile_path = sys.argv[1]
-    old_dir_path = sys.argv[2]
-    new_dir_path = sys.argv[3]
-    doccano2mecab(targetfile_path, old_dir_path, new_dir_path)
+    json_contents = reshape_json(targetfile_path)
+    
+    l = glob.glob("{}/*.txt".format(old_dir_path))
+    json_list = [json_content["text"] for json_content in json_contents]
+    
+    for file_name in l:
+        with open(file_name, "r", encoding="utf-8") as f:
+            mecab_sentence = f.readlines()
+        morphs = [i.split("\t")[0] for i in mecab_sentence]
+        file_sentence = " ".join(morphs)
+        mecab_length = [len(morph) for morph in morphs]
+        i = json_list.index(file_sentence)
+        json_labels = return_json_labels(mecab_length, json_contents[i]["labels"])
+        # print(json_labels)
+        annotated_text = return_annotated_text(mecab_sentence, json_labels)
+        with open("{}/".format(new_dir_path) + file_name.replace(old_dir_path, ""), "w") as f:
+            f.write("\n".join(annotated_text))
