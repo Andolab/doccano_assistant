@@ -1,43 +1,48 @@
 import sys
 import json
 import re
-import glob  # フォルダの中のpathを取ってこれるやつ
+import glob
+import argparse
 
+parser = argparse.ArgumentParser(description='Parse doccano export and parsed text to parsed text and labels.')
+parser.add_argument("infile", nargs="?", type=argparse.FileType("r"), help="a file path of doccano export", default=sys.stdin)
+parser.add_argument("infolder", nargs="?", help="a folder path of parsed text", default=sys.stdin)
+parser.add_argument("outfolder", nargs="?", help="a folder path of this program's result", default=sys.stdin)
+args = parser.parse_args()
 
-def return_annotated_text(file_sentence, json_labels):
+def return_annotated_text(file_sentence, iob_labels):
     annotated_text = []
-    for f, j in zip(file_sentence, json_labels):
+    for f, j in zip(file_sentence, iob_labels):
         tmp_text = f.split("\t")
         tmp_text[-1] = j
         tmp_text = "\t".join(tmp_text)
         annotated_text.append(tmp_text)
     return annotated_text
 
-def return_json_labels(length, j_labels:list):
-    IOB_labels = []
+def return_iob_labels(length, j_labels:list):
+    iob_labels = []
     index = 0
-    flag = False
+    begin_flag = False
     j_labels.sort(key=lambda x:x[0])
-    # while index < sum(length) + len(length) - 1:
     for l in length:
-        if len(j_labels) > 0 and j_labels[0][0] <= index and j_labels[0][1] > index:
-            if flag:
-                IOB_labels.append("I-" + j_labels[0][2])
+        if len(j_labels) > 0 \
+            and j_labels[0][0] <= index \
+                and j_labels[0][1] > index:
+            if begin_flag:
+                iob_labels.append("I-" + j_labels[0][2])
             else:
-                IOB_labels.append("B-" + j_labels[0][2])
-                flag = True
+                iob_labels.append("B-" + j_labels[0][2])
+                begin_flag = True
         else:
-            IOB_labels.append("O")
+            iob_labels.append("O")
         index += l + 1
         if len(j_labels) > 0 and j_labels[0][1] <= index:
             j_labels = j_labels[1:]
-            flag = False
-        print(index)
-    return IOB_labels
+            begin_flag = False
+    return iob_labels
 
 def reshape_json(json_file):
     with open(json_file, 'r', encoding="utf-8") as f:
-        # reader = f.readlines()
         content = '['
         content += ''.join(
             [re.sub(r'}\n', '},\n', line)
@@ -58,13 +63,12 @@ if __name__ == "__main__":
     
     for file_name in l:
         with open(file_name, "r", encoding="utf-8") as f:
-            mecab_sentence = f.readlines()
-        morphs = [i.split("\t")[0] for i in mecab_sentence]
-        file_sentence = " ".join(morphs)
+            parsed_sentence = f.readlines()
+        morphs = [i.split("\t")[0] for i in parsed_sentence]
+        synopsis_sentence = " ".join(morphs)
         mecab_length = [len(morph) for morph in morphs]
-        i = json_list.index(file_sentence)
-        json_labels = return_json_labels(mecab_length, json_contents[i]["labels"])
-        # print(json_labels)
-        annotated_text = return_annotated_text(mecab_sentence, json_labels)
+        i = json_list.index(synopsis_sentence)
+        iob_labels = return_iob_labels(mecab_length, json_contents[i]["labels"])
+        annotated_text = return_annotated_text(parsed_sentence, iob_labels)
         with open("{}/".format(new_dir_path) + file_name.replace(old_dir_path, ""), "w") as f:
             f.write("\n".join(annotated_text))
