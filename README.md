@@ -1,47 +1,38 @@
 # doccano_assistant
-[doccano](https://github.com/chakki-works/doccano) (open source text annotation tool) を使うときのサポートを行うスクリプト群置き場
+
+These scripts provide supports to annotator using [doccano](https://github.com/chakki-works/doccano) (open source text annotation tool)
+
+※ These scripts only support annotation of sequence labeling task format (Part of Speech Tagging, Named Entity Recognition, etc...)
 
 ## Usage
 
-1. mecabで形態素解析された文からdoccanoでアノテーションを行う前の前処理を行う(必要な場合のみ)
+1. The sentences of annotating target are tokenized using morphological analysis. (Option)
+2. Convert tokenized sentences to format of doccano input. (Option)
+
+   ```shell
+   python mecab2doccano.py dir_path_having_tokenized_sentences output_file_path
+   ```
+
+3. Let's annotate using doccano!!
+
+4. Export annotation result from doccano (.json)
+
+5. Execute following command (convert doccano format to conll format)
 
 ```shell
-python mecab2doccano.py テキストファイルが置かれたディレクトリ 前処理後のテキストを保存するファイル名
+python doccano2mecab.py *.json(from 4.) dir_path_having_tokenized_sentences output_path
 ```
 
-2. dockerコンテナを立ち上げる
-
 ```shell
-docker build . -t doccano_container:0.1
-docker run -d -p 8000:8000 doccano_container:0.1
-# コンテナidが出力される
-```
+ $ python doccano2mecab.py --help
+ usage: doccano2mecab.py [-h] infile indir outdir
+ Parse doccano export and parsed text to parsed text and labels.
 
-3. doccanoのユーザを追加（必要な場合のみ）
+ positional arguments:
+ infile a file path of doccano export
+ indir a folder path of parsed text
+ outdir a folder path of this program\'s result
 
-```shell
-docker exec -it コンテナid sh
-# コンテナへアクセス後
-# 以下はコマンド例．ユーザ名やパスワードは変更可能
-echo "from django.contrib.auth.models import User; User.objects.create_user('username', 'mailaddress', 'password')" | python manage.py shell
-```
-
-4. localhost:8000/にアクセス
-
-5. タグ付け頑張る!!
-
-6. doccanoからタグづけしたファイルを .csv 形式でダウンロードしてくる
-
-7. doccanoでタグづけしたテキストをダウンロードし，以下のスクリプトを走らせる
-
-```shell
-# 別々のファイルにタグ付けしたい場合に使う
-python doccano2mecab.py タグづけしたテキスト(.csv) テキストファイルが置かれたディレクトリ タグづけされたファイルを置きたいディレクトリ
-```
-
-または
-
-```shell
-# 1つのファイルにタグ付けした結果を置きたい場合に使う
-python doccano2parse.py タグづけしたテキスト(.csv) テキストファイル名
+ optional arguments:
+ -h, --help show this help message and exit
 ```
